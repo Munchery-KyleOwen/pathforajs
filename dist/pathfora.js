@@ -441,6 +441,70 @@
               'widgets': [widget]
           });
       }
+    },
+
+    /**
+     * @description Escape URIs optionally without double-encoding
+     * @param   {string}  text                 the uri text to escape
+     * @param   {obj}     options
+     * @param   {boolean} options.usePlus      escape `space` to `+` instead of `%20`
+     * @param   {boolean} options.keepEscaped  do not double-encode text
+     * @returns {string}  uri                  the uri-escaped text
+     */
+    escapeURI: function(text, options) {
+      return escapeURI(text, options);
+
+      // NOTE This was ported from various bits of C++ code from Chromium
+      function escapeURI(text, options) {
+        options || (options = {});
+        var usePlus = options.usePlus || false;
+        var keepEscaped = options.keepEscaped || false;
+        var length = text.length;
+        var escaped = [];
+
+        for (var index = 0; index < length; index++) {
+          var charText = text[index];
+          var charCode = text.charCodeAt(index);
+
+          if (usePlus && ' ' === charText) {
+            escaped.push('+');
+          } else if (keepEscaped && '%' === charText && length >= index + 2 &&
+              isHexDigit(text[index + 1]) &&
+              isHexDigit(text[index + 2])) {
+            escaped.push('%');
+          } else if (shouldEscape(charText)) {
+            escaped.push('%',
+              toHexDigit(charCode >> 4),
+              toHexDigit(charCode & 0xf));
+          } else {
+            escaped.push(charText);
+          }
+        }
+        return escaped.join('');
+      }
+
+      function isHexDigit(c) {
+        return /[0-9A-Fa-f]/.test(c);
+      }
+
+      function toHexDigit(i) {
+        return '0123456789ABCDEF'[i];
+      }
+
+      function shouldEscape(charText) {
+        return !isURISeparator(charText) && containsChar([
+          0xffffffff, 0xf80008fd, 0x78000001, 0xb8000001,
+          0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
+        ], charText.charCodeAt(0));
+      }
+
+      function isURISeparator(c) {
+        return [ '#', ':', ';', '/', '?', '$', '&', '+', ',', '@', '=' ].indexOf(c) !== -1;
+      }
+
+      function containsChar(charMap, charCode) {
+        return (charMap[charCode >> 5] & (1 << (charCode & 31))) !== 0;
+      }
     }
   };
 
@@ -562,7 +626,7 @@
      */
     parseQuery: function (url) {
       var query = {};
-      var pieces = url.split('?');
+      var pieces = utils.escapeURI(url, { keepEscaped: true }).split('?');
       if (pieces.length > 1) {
         pieces = pieces[1].split('&');
 

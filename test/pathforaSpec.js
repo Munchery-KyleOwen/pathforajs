@@ -671,7 +671,7 @@ describe('Pathfora', function () {
 
     var w = $('[id*="ab-widget2"]');
     expect(w.length).toBe(2);
-    
+
     var first = w.first();
     expect(first.find('.pf-widget-message').text()).toEqual(first.next().find('.pf-widget-message').text());
   });
@@ -792,7 +792,7 @@ describe('Pathfora', function () {
 
     var w = $('[id*="ab-widget"]');
     expect(w.length).toBe(2);
-    
+
     var w5 = $('[id*="ab-widget5"]');
     expect(w5.length).toBe(1);
 
@@ -1681,7 +1681,7 @@ describe('Widgets', function () {
     expect(function() {
       pathfora.initializeWidgets([errorModal], 0);
       expect(jasmine.Ajax.requests.mostRecent().url).toBe('//api.lytics.io/api/content/recommend/0/user/_uids/123?ql=*');
-      
+
       jasmine.Ajax.requests.mostRecent().respondWith({
         'status': 400,
         'contentType': 'application/json',
@@ -1697,7 +1697,7 @@ describe('Widgets', function () {
     expect(function() {
       pathfora.initializeWidgets([errorModal3], credentials);
       expect(jasmine.Ajax.requests.mostRecent().url).toBe('//api.lytics.io/api/content/recommend/123/user/_uids/123?ql=*');
-      
+
       jasmine.Ajax.requests.mostRecent().respondWith({
         'status': 200,
         'contentType': 'application/json',
@@ -2799,5 +2799,43 @@ describe('API', function () {
     });
 
     expect(callback).toHaveBeenCalledWith('{"response":"error"}');
+  });
+});
+
+describe("Utils", function() {
+  describe("the escapeURI util", function() {
+    var escapeURI = pathfora.utils.escapeURI;
+
+    it("should escape non-URI characters", function() {
+      // Most of the character space we care about, un-escaped...
+      var unescaped =
+        "\x02\n\x1d !\"%'()*-.0123456789" +
+        "<>ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "[\\]^_`abcdefghijklmnopqrstuvwxyz" +
+        "{|}~\x7f\x80\xff";
+
+      // ...and escaped
+      var escaped =
+        "%02%0A%1D+!%22%25%27()*-.0123456789" +
+        "%3C%3EABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "%5B%5C%5D%5E_%60abcdefghijklmnopqrstuvwxyz" +
+        "%7B%7C%7D~%7F%80%FF";
+
+      expect(escapeURI(unescaped, { usePlus: true })).toBe(escaped);
+    });
+
+    it("should not escape URI separators", function() {
+      var unescaped = "http://www.getlytics.com/?foo=1&bar=2";
+
+      expect(escapeURI(unescaped)).toBe(unescaped);
+    });
+
+    it("should not double-encode URIs", function() {
+      var unescaped = "http://www.getlytics.com/?foo=a b c&bar=d e f";
+      var escapedOnce = escapeURI(unescaped, { keepEscaped: true });
+      var escapedTwice = escapeURI(escapedOnce, { keepEscaped: true });
+
+      expect(escapedTwice).toBe(escapedOnce);
+    });
   });
 });
